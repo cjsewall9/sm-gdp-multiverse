@@ -1,0 +1,323 @@
+---
+title: "TBD"
+subtitle: "TBD"
+format: 
+  html:
+    code-fold: true
+    embed-resources: true
+date: today 
+date-format: short
+title-block-banner: true
+---
+
+# First, Specific Specification
+```{r}
+install.packages("simstudy")
+install.packages("stargazer")
+library(simstudy)
+library(dplyr)
+
+# define params
+BS_F      <- 0.2
+SM_F      <- 0.2
+SM_BS     <- 0.2
+MH_F      <- 0.2
+MH_BS     <- 0.5
+MH_SM     <- 0
+F_SM_int  <- 0
+SM_BS_int <- 0.2
+
+def <- defData(varname = "Female", 
+               dist = "binary", 
+               formula = 0, 
+               link = "logit")
+def <- defData(def, varname = "BadStuff", 
+               dist = "normal",
+               formula = "0 + ..BS_F * Female", 
+               variance = 1)
+def <- defData(def, varname = "SM", 
+               dist = "normal",
+               formula = "4 + ..SM_F * Female + ..SM_BS * BadStuff", 
+               variance = 1)
+def <- defData(def, varname = "MHprobs", 
+               dist = "normal",
+               formula = "0 + ..MH_F * Female + ..MH_BS * BadStuff + ..MH_SM * SM + ..F_SM_int * SM*Female + ..SM_BS_int * SM*BadStuff",
+               variance = 1)
+
+simdat <- genData(n, def)
+
+# All data
+mod1 <- lm(MHprobs ~ SM, data = simdat)
+mod2 <- lm(MHprobs ~ SM + Female, data = simdat)
+mod3 <- lm(MHprobs ~ SM * Female, data = simdat)
+mod4 <- lm(MHprobs ~ SM + BadStuff, data = simdat)
+mod5 <- lm(MHprobs ~ SM * BadStuff, data = simdat)
+mod6 <- lm(MHprobs ~ SM + Female + BadStuff, data = simdat)
+mod7 <- lm(MHprobs ~ SM * Female + BadStuff, data = simdat)
+mod8 <- lm(MHprobs ~ SM * Female + BadStuff + SM:BadStuff, data = simdat)
+
+summary(mod1)
+summary(mod2)
+summary(mod3)
+summary(mod4)
+summary(mod5)
+summary(mod6)
+summary(mod7)
+summary(mod8)
+
+stargazer::stargazer(mod3, mod7, type = "text",
+                     column.labels = c("Missing Bad Stuff", "Missing SM*BadStuff Interaction"))
+
+```
+
+
+# Build Multiverse
+```{r, eval=FALSE}
+set.seed(442)
+
+# build sim function
+my_func <- function(BS_F,SM_F,SM_BS,MH_F,MH_BS,MH_SM,F_SM_int,SM_BS_int, n=5e4, ...) {
+  # generate data
+  def <- defData(varname = "Female", 
+                 dist = "binary", 
+                 formula = 0, 
+                 link = "logit")
+  def <- defData(def, varname = "BadStuff", 
+                 dist = "normal",
+                 formula = "0 + ..BS_F * Female", 
+                 variance = 1)
+  def <- defData(def, varname = "SM", 
+                 dist = "normal",
+                 formula = "4 + ..SM_F * Female + ..SM_BS * BadStuff", 
+                 variance = 1)
+  def <- defData(def, varname = "MHprobs", 
+                 dist = "normal",
+                 formula = "0 + ..MH_F * Female + ..MH_BS * BadStuff + ..MH_SM * SM + ..F_SM_int * SM*Female + ..SM_BS_int * SM*BadStuff",
+                 variance = 1)
+  simdat <- genData(n, def)
+  # fit models
+  mod1 <- lm(MHprobs ~ SM * Female, data = simdat)
+  mod2 <- lm(MHprobs ~ SM * Female + BadStuff, data = simdat)
+  mod3 <- lm(MHprobs ~ SM * Female + BadStuff + SM:BadStuff, data = simdat)
+  # extract results
+  results <- tibble("BS_F"=BS_F,
+                    "SM_F"=SM_F,
+                    "SM_BS"=SM_BS,
+                    "MH_F"=MH_F,
+                    "MH_BS"=MH_BS,
+                    "MH_SM"=MH_SM,
+                    "F_SM_int"=F_SM_int,
+                    "SM_BS_int"=SM_BS_int,
+                    "mod1_beta"=coef(mod1)[[4]],
+                    "mod2_beta"=coef(mod2)[[5]],
+                    "mod3_beta"=coef(mod3)[[5]])
+}
+
+# Create grid of parameters
+d <- expand.grid(
+  "BS_F" = seq(0, 0.3, by = 0.1),
+  "SM_F" = seq(0, 0.3, by = 0.1),
+  "SM_BS" = seq(0, 0.3, by = 0.1),
+  "MH_F" = seq(0, 0.3, by = 0.1),
+  "MH_BS" = 0.5,
+  "MH_SM" = 0,
+  "F_SM_int" = 0,
+  "SM_BS_int" = seq(0, 0.3, by = 0.1)
+  )
+
+out <- purrr::pmap_dfr(d, my_func)
+
+# Iterate over parameters
+library(furrr)
+plan(multisession, workers = parallelly::availableCores() - 2)
+out <- future_pmap_dfr(d, my_func, .options = furrr_options(seed = 835), .progress = TRUE) 
+plan(sequential)
+head(out)
+```
+# Multiverse 1: MHprobs ~ SM * Female + BadStuff
+```{r}
+#install.packages("ggtext")
+library(ggtext)
+
+spec_curve <- out |> 
+  mutate(rnk = dense_rank(mod2_beta),
+         delta = abs(mod2_beta)) |> 
+  ggplot(aes(rnk, mod2_beta, color = delta)) +
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed") +
+  geom_point(alpha = .6) +
+  ylab("Recovered Effect") +
+  scale_x_continuous("Specifications", expand = c(.01, .01)) +
+  scale_color_distiller(NULL, type = "seq", palette = "OrRd", direction = 1) +
+  annotate(
+    'text',
+    x = 125,
+    y = 0.035,
+    label = 'Effect should be 0',
+    fontface = 'bold', 
+    size = 3.5
+    ) +
+  annotate(
+    'segment',
+    x = 125, 
+    y = 0.03,
+    yend = 0.003,
+    xend = 77,
+    linewidth = 0.5,
+    arrow = arrow(length = unit(0.25, 'cm'))
+    ) +
+  annotate(
+    'rect',
+    xmin = 850,
+    xmax = 1030,
+    ymin = 0.06,
+    ymax = 0.135,
+    alpha = 0.12, 
+    fill = 'grey40',
+    col = 'black'
+  ) +
+  geom_richtext(
+    inherit.aes = FALSE,
+    data = tibble(x = 525,
+                  y = 0.1,
+                  label = "Bias increases as F&rarr;BS effect  
+                  and SM*BS &rarr; MH effect increase"),
+    aes(x = x, y = y, label = label), fill = NA, label.color = NA, hjust = 0, fontface = "bold", size = 3.5
+  ) +
+  annotate(
+    'curve',
+    x = 750, 
+    y = 0.09,
+    xend = 848,
+    yend = 0.08,
+    linewidth = 0.5,
+    curvature = 0.5,
+    arrow = arrow(length = unit(0.25, 'cm'))
+    ) +
+  guides(color = "none") +
+  ggtitle("Is Haidt's theory about the SM&rarr;MH effect among girls a mirage?") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 10, face = "bold"),
+        plot.title = element_markdown(face = "bold", hjust = 0.5)) 
+
+specs <- out |> 
+  mutate(rnk = dense_rank(mod2_beta)) |>
+  dplyr::select(BS_F, SM_F, SM_BS, MH_F, SM_BS_int, rnk) |> 
+  tidyr::pivot_longer(c(BS_F, SM_F, SM_BS, MH_F, SM_BS_int)) |> 
+  arrange(rnk) |> 
+  mutate(name = factor(name, levels = c("BS_F", "SM_BS_int", "SM_F", "SM_BS", "MH_F"),
+                       labels = c("F &rarr; BS", "SM*BS &rarr; MH", "F&rarr;SM", "BS&rarr;SM", "F&rarr;MH"))) |> 
+  ggplot(aes(x = rnk, y = factor(value), color = name)) + 
+  geom_point(size = 0.5) +
+  facet_grid(name ~ ., space = "free_y", scales = "free_y", switch = "y") +
+  guides(color = "none") +
+  scale_x_continuous(NULL, expand = c(.01, .01)) +
+  ylab("Simulated Parameter & Effect Size") +
+  labs(caption = "Analysis and plot by @cjsewall9") +
+  theme_classic() +
+  theme(strip.placement = "outside",
+        strip.background = element_rect(fill=NA,colour=NA),
+        panel.spacing.x=unit(0.15,"cm"), 
+        strip.text.y = element_markdown(angle = 180, face = "bold", size = 7),
+        axis.text.y = element_text(angle = 0, hjust = 0.5, size = 6), 
+        axis.title.y = element_text(size=9,face="bold"),
+        panel.spacing = unit(0.25, "lines")) 
+
+combined_plot <- cowplot::plot_grid(spec_curve, specs, axis = "bltr", align = "v", ncol = 1, rel_heights = c(1.9, 2.1))
+combined_plot
+```
+
+# Multiverse 2: MHprobs ~ SM * Female
+*Not included in Tweetorial*
+```{r}
+spec_curve2 <- out |> 
+  mutate(rnk = dense_rank(mod1_beta),
+         delta = abs(mod1_beta)) |> 
+  ggplot(aes(rnk, mod1_beta, color = delta)) +
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed") +
+  geom_point(alpha = .6) +
+  ylab("Recovered Effect") +
+  scale_x_continuous("Specifications", expand = c(.01, .01)) +
+  scale_color_distiller(NULL, type = "seq", palette = "OrRd", direction = 1) +
+  annotate(
+    'text',
+    x = 125,
+    y = 0.035,
+    label = 'Effect should be 0',
+    fontface = 'bold', 
+    size = 3.5
+    ) +
+  annotate(
+    'segment',
+    x = 125, 
+    y = 0.03,
+    yend = 0.003,
+    xend = 77,
+    linewidth = 0.5,
+    arrow = arrow(length = unit(0.25, 'cm'))
+    ) +
+  annotate(
+    'rect',
+    xmin = 850,
+    xmax = 1030,
+    ymin = 0.06,
+    ymax = 0.135,
+    alpha = 0.12, 
+    fill = 'grey40',
+    col = 'black'
+  ) +
+  geom_richtext(
+    inherit.aes = FALSE,
+    data = tibble(x = 525,
+                  y = 0.1,
+                  label = "Bias increases as F&rarr;BS effect  
+                  and SM*BS &rarr; MH effect increase"),
+    aes(x = x, y = y, label = label), fill = NA, label.color = NA, hjust = 0, fontface = "bold", size = 3.5
+  ) +
+  annotate(
+    'curve',
+    x = 750, 
+    y = 0.09,
+    xend = 848,
+    yend = 0.08,
+    linewidth = 0.5,
+    curvature = 0.5,
+    arrow = arrow(length = unit(0.25, 'cm'))
+    ) +
+  guides(color = "none") +
+  ggtitle("Is Haidt's theory about the SM&rarr;MH effect among girls a mirage?") +
+  theme_bw() +
+  theme(axis.title = element_text(size = 10, face = "bold"),
+        plot.title = element_markdown(face = "bold", hjust = 0.5)) 
+
+specs2 <- out |> 
+  mutate(rnk = dense_rank(mod1_beta)) |>
+  dplyr::select(BS_F, SM_F, SM_BS, MH_F, SM_BS_int, rnk) |> 
+  tidyr::pivot_longer(c(BS_F, SM_F, SM_BS, MH_F, SM_BS_int)) |> 
+  arrange(rnk) |> 
+  mutate(name = factor(name, levels = c("BS_F", "SM_BS_int", "SM_F", "SM_BS", "MH_F"),
+                       labels = c("F &rarr; BS", "SM*BS &rarr; MH", "F&rarr;SM", "BS&rarr;SM", "F&rarr;MH"))) |> 
+  ggplot(aes(x = rnk, y = factor(value), color = name)) + 
+  geom_point(size = 0.5) +
+  facet_grid(name ~ ., space = "free_y", scales = "free_y", switch = "y") +
+  guides(color = "none") +
+  scale_x_continuous(NULL, expand = c(.01, .01)) +
+  ylab("Simulated Parameter & Effect Size") +
+  labs(caption = "Analysis and plot by @cjsewall9") +
+  theme_classic() +
+  theme(strip.placement = "outside",
+        strip.background = element_rect(fill=NA,colour=NA),
+        panel.spacing.x=unit(0.15,"cm"), 
+        strip.text.y = element_markdown(angle = 180, face = "bold", size = 7),
+        axis.text.y = element_text(angle = 0, hjust = 0.5, size = 6), 
+        axis.title.y = element_text(size=9,face="bold"),
+        panel.spacing = unit(0.25, "lines")) 
+
+combined_plot2 <- cowplot::plot_grid(spec_curve2, specs2, axis = "bltr", align = "v", ncol = 1, rel_heights = c(1.9, 2.1))
+combined_plot2
+```
+
+```{r}
+combined_plot
+combined_plot2
+```
+
