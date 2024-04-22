@@ -1,6 +1,6 @@
 ---
-title: "TBD"
-subtitle: "TBD"
+title: "Is the SM-MH Effect Among Girls a Mirage?"
+author: Craig Sewall
 format: 
   html:
     code-fold: true
