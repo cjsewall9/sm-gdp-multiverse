@@ -17,6 +17,8 @@ install.packages("stargazer")
 library(simstudy)
 library(dplyr)
 
+n <- 1e5
+
 # define params
 BS_F      <- 0.2
 SM_F      <- 0.2
