@@ -323,3 +323,231 @@ combined_plot
 combined_plot2
 ```
 
+# Sensitivity Check on BadStuff->MH Effect Size
+```{r, warning=FALSE}
+n <- 1e5
+
+### Original Effect Size (0.5) ###
+
+# define params
+BS_F      <- 0.2
+SM_F      <- 0.2
+SM_BS     <- 0.2
+MH_F      <- 0.2
+MH_BS     <- 0.5
+MH_SM     <- 0
+F_SM_int  <- 0
+SM_BS_int <- 0.2
+
+def <- defData(varname = "Female", 
+               dist = "binary", 
+               formula = 0, 
+               link = "logit")
+def <- defData(def, varname = "BadStuff", 
+               dist = "normal",
+               formula = "0 + ..BS_F * Female", 
+               variance = 1)
+def <- defData(def, varname = "SM", 
+               dist = "normal",
+               formula = "4 + ..SM_F * Female + ..SM_BS * BadStuff", 
+               variance = 1)
+def <- defData(def, varname = "MHprobs", 
+               dist = "normal",
+               formula = "0 + ..MH_F * Female + ..MH_BS * BadStuff + ..MH_SM * SM + ..F_SM_int * SM*Female + ..SM_BS_int * SM*BadStuff",
+               variance = 1)
+
+simdat <- genData(n, def)
+
+# All data
+mod1_5 <- lm(MHprobs ~ SM * Female, data = simdat)
+mod2_5 <- lm(MHprobs ~ SM * Female + BadStuff, data = simdat)
+
+
+### Effect Size = 0.4 ###
+
+# define params
+BS_F      <- 0.2
+SM_F      <- 0.2
+SM_BS     <- 0.2
+MH_F      <- 0.2
+MH_BS     <- 0.4
+MH_SM     <- 0
+F_SM_int  <- 0
+SM_BS_int <- 0.2
+
+def <- defData(varname = "Female", 
+               dist = "binary", 
+               formula = 0, 
+               link = "logit")
+def <- defData(def, varname = "BadStuff", 
+               dist = "normal",
+               formula = "0 + ..BS_F * Female", 
+               variance = 1)
+def <- defData(def, varname = "SM", 
+               dist = "normal",
+               formula = "4 + ..SM_F * Female + ..SM_BS * BadStuff", 
+               variance = 1)
+def <- defData(def, varname = "MHprobs", 
+               dist = "normal",
+               formula = "0 + ..MH_F * Female + ..MH_BS * BadStuff + ..MH_SM * SM + ..F_SM_int * SM*Female + ..SM_BS_int * SM*BadStuff",
+               variance = 1)
+
+simdat <- genData(n, def)
+
+# All data
+mod1_4 <- lm(MHprobs ~ SM * Female, data = simdat)
+mod2_4 <- lm(MHprobs ~ SM * Female + BadStuff, data = simdat)
+
+### Effect Size = 0.3 ###
+
+# define params
+BS_F      <- 0.2
+SM_F      <- 0.2
+SM_BS     <- 0.2
+MH_F      <- 0.2
+MH_BS     <- 0.3
+MH_SM     <- 0
+F_SM_int  <- 0
+SM_BS_int <- 0.2
+
+def <- defData(varname = "Female", 
+               dist = "binary", 
+               formula = 0, 
+               link = "logit")
+def <- defData(def, varname = "BadStuff", 
+               dist = "normal",
+               formula = "0 + ..BS_F * Female", 
+               variance = 1)
+def <- defData(def, varname = "SM", 
+               dist = "normal",
+               formula = "4 + ..SM_F * Female + ..SM_BS * BadStuff", 
+               variance = 1)
+def <- defData(def, varname = "MHprobs", 
+               dist = "normal",
+               formula = "0 + ..MH_F * Female + ..MH_BS * BadStuff + ..MH_SM * SM + ..F_SM_int * SM*Female + ..SM_BS_int * SM*BadStuff",
+               variance = 1)
+
+simdat <- genData(n, def)
+
+# All data
+mod1_3 <- lm(MHprobs ~ SM * Female, data = simdat)
+mod2_3 <- lm(MHprobs ~ SM * Female + BadStuff, data = simdat)
+
+### Effect Size = 0.2 ###
+
+# define params
+BS_F      <- 0.2
+SM_F      <- 0.2
+SM_BS     <- 0.2
+MH_F      <- 0.2
+MH_BS     <- 0.2
+MH_SM     <- 0
+F_SM_int  <- 0
+SM_BS_int <- 0.2
+
+def <- defData(varname = "Female", 
+               dist = "binary", 
+               formula = 0, 
+               link = "logit")
+def <- defData(def, varname = "BadStuff", 
+               dist = "normal",
+               formula = "0 + ..BS_F * Female", 
+               variance = 1)
+def <- defData(def, varname = "SM", 
+               dist = "normal",
+               formula = "4 + ..SM_F * Female + ..SM_BS * BadStuff", 
+               variance = 1)
+def <- defData(def, varname = "MHprobs", 
+               dist = "normal",
+               formula = "0 + ..MH_F * Female + ..MH_BS * BadStuff + ..MH_SM * SM + ..F_SM_int * SM*Female + ..SM_BS_int * SM*BadStuff",
+               variance = 1)
+
+simdat <- genData(n, def)
+
+# All data
+mod1_2 <- lm(MHprobs ~ SM * Female, data = simdat)
+mod2_2 <- lm(MHprobs ~ SM * Female + BadStuff, data = simdat)
+
+### Effect Size = 0.1 ###
+
+# define params
+BS_F      <- 0.2
+SM_F      <- 0.2
+SM_BS     <- 0.2
+MH_F      <- 0.2
+MH_BS     <- 0.1
+MH_SM     <- 0
+F_SM_int  <- 0
+SM_BS_int <- 0.2
+
+def <- defData(varname = "Female", 
+               dist = "binary", 
+               formula = 0, 
+               link = "logit")
+def <- defData(def, varname = "BadStuff", 
+               dist = "normal",
+               formula = "0 + ..BS_F * Female", 
+               variance = 1)
+def <- defData(def, varname = "SM", 
+               dist = "normal",
+               formula = "4 + ..SM_F * Female + ..SM_BS * BadStuff", 
+               variance = 1)
+def <- defData(def, varname = "MHprobs", 
+               dist = "normal",
+               formula = "0 + ..MH_F * Female + ..MH_BS * BadStuff + ..MH_SM * SM + ..F_SM_int * SM*Female + ..SM_BS_int * SM*BadStuff",
+               variance = 1)
+
+simdat <- genData(n, def)
+
+# All data
+mod1_1 <- lm(MHprobs ~ SM * Female, data = simdat)
+mod2_1 <- lm(MHprobs ~ SM * Female + BadStuff, data = simdat)
+
+### Effect Size = 0 ###
+
+# define params
+BS_F      <- 0.2
+SM_F      <- 0.2
+SM_BS     <- 0.2
+MH_F      <- 0.2
+MH_BS     <- 0
+MH_SM     <- 0
+F_SM_int  <- 0
+SM_BS_int <- 0.2
+
+def <- defData(varname = "Female", 
+               dist = "binary", 
+               formula = 0, 
+               link = "logit")
+def <- defData(def, varname = "BadStuff", 
+               dist = "normal",
+               formula = "0 + ..BS_F * Female", 
+               variance = 1)
+def <- defData(def, varname = "SM", 
+               dist = "normal",
+               formula = "4 + ..SM_F * Female + ..SM_BS * BadStuff", 
+               variance = 1)
+def <- defData(def, varname = "MHprobs", 
+               dist = "normal",
+               formula = "0 + ..MH_F * Female + ..MH_BS * BadStuff + ..MH_SM * SM + ..F_SM_int * SM*Female + ..SM_BS_int * SM*BadStuff",
+               variance = 1)
+
+simdat <- genData(n, def)
+
+# All data
+mod1_0 <- lm(MHprobs ~ SM * Female, data = simdat)
+mod2_0 <- lm(MHprobs ~ SM * Female + BadStuff, data = simdat)
+
+#### Compare Model Output
+# Misspecified Model #1: Not controlling for BadStuff
+stargazer::stargazer(mod1_5, mod1_4, mod1_3, mod1_2, mod1_1, mod1_0, 
+                     type = "text",
+                     title = "Misspecified Model #1: Not controlling for BadStuff",
+                     column.labels = c("B=0.5","B=0.4","B=0.3","B=0.2","B=0.1","B=0"))
+
+# Misspecified Model #2: Controlling for BadStuff
+stargazer::stargazer(mod2_5, mod2_4, mod2_3, mod2_2, mod2_1, mod2_0, 
+                     type = "text",
+                     title = "Misspecified Model #2: Controlling for BadStuff",
+                     column.labels = c("B=0.5","B=0.4","B=0.3","B=0.2","B=0.1","B=0"))
+```
